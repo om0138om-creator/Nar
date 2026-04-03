@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 تخزين الفيديو على تلجرام</title>
+    <style>
+        /* ═══════════════════════════════════════════════════════
+                            تنسيق بسيط جداً
+           ═══════════════════════════════════════════════════════ */
+        
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+        }
+        
+        body {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00d4ff;
+            margin-bottom: 30px;
+        }
+        
+        /* ═══════════ شريط حالة الاتصال ═══════════ */
+        .connection-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .connection-status.connected {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+        
+        .connection-status.disconnected {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff4444;
+        }
+        
+        .connection-status.checking {
+            background: rgba(255, 200, 0, 0.2);
+            color: #ffc800;
+        }
+        
+        /* ═══════════ قسم الرفع ═══════════ */
+        .upload-section {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .upload-area {
+            border: 3px dashed #00d4ff;
+            padding: 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .upload-area.dragover {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00ff88;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(45deg, #00d4ff, #00ff88);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        
+        .upload-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* ═══════════ شريط التقدم ═══════════ */
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #0f0f23;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #000;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status.success {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            display: block;
+        }
+        
+        .status.error {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff4444;
+            display: block;
+        }
+        
+        /* ═══════════ قسم الفيديوهات ═══════════ */
+        .videos-section {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 15px;
+        }
+        
+        .videos-section h2 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #00d4ff;
+            padding-bottom: 10px;
+        }
+        
+        .video-list {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .video-item {
+            background: #0f0f23;
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .video-info h3 {
+            margin: 0 0 5px 0;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        .video-info span {
+            color: #888;
+            font-size: 13px;
+        }
+        
+        .video-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-play {
+            background: #00d4ff;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .btn-delete {
+            background: #ff4444;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        
+        .no-videos {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+        }
+        
+        /* ═══════════ مشغل الفيديو ═══════════ */
+        .video-player {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .video-player.active {
+            display: flex;
+        }
+        
+        .video-player video {
+            max-width: 90%;
+            max-height: 80%;
+            border-radius: 10px;
+        }
+        
+        .close-player {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            color: #fff;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        
+        .player-title {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        /* ═══════════ زر إعادة المحاولة ═══════════ */
+        .retry-btn {
+            background: #ffc800;
+            color: #000;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        /* ═══════════ Loading ═══════════ */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══════════════════════════════════════════════════════
+                            العنوان
+         ═══════════════════════════════════════════════════════ -->
+    <h1>🎬 تخزين الفيديو على تلجرام</h1>
+    <p style="text-align: center; color: #888; margin-bottom: 20px;">
+        Proof of Concept - اختبار فكرة استخدام تلجرام كتخزين سحابي
+    </p>
+
+    <!-- ═══════════ حالة الاتصال بالخادم ═══════════ -->
+    <div class="connection-status checking" id="connectionStatus">
+        🔄 جاري الاتصال بالخادم...
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+                            قسم الرفع
+         ═══════════════════════════════════════════════════════ -->
+    <div class="upload-section">
+        <div class="upload-area" id="dropZone">
+            <p style="font-size: 50px; margin: 0;">📤</p>
+            <p>اسحب وأفلت الفيديو هنا</p>
+            <p style="color: #888;">أو</p>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                اختر ملف فيديو
+            </button>
+            <input type="file" id="fileInput" accept="video/*">
+        </div>
+        
+        <div id="selectedFile" style="margin-top: 15px; color: #00ff88;"></div>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <p id="progressText" style="margin-top: 10px; color: #888;"></p>
+        </div>
+        
+        <div class="status" id="statusMessage"></div>
+        
+        <button class="upload-btn" id="uploadBtn" style="display: none;" onclick="uploadVideo()">
+            ⬆️ رفع الفيديو
+        </button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+                            قائمة الفيديوهات
+         ═══════════════════════════════════════════════════════ -->
+    <div class="videos-section">
+        <h2>📹 الفيديوهات المرفوعة <span id="refreshBtn" style="cursor: pointer; font-size: 20px;" onclick="loadVideos()">🔄</span></h2>
+        
+        <div class="video-list" id="videoList">
+            <div class="no-videos" id="loadingVideos">
+                <span class="loading"></span>
+                <p>جاري تحميل الفيديوهات...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+                            مشغل الفيديو
+         ═══════════════════════════════════════════════════════ -->
+    <div class="video-player" id="videoPlayer">
+        <button class="close-player" onclick="closePlayer()">✕</button>
+        <p class="player-title" id="playerTitle"></p>
+        <video id="videoElement" controls></video>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+                            JavaScript
+         ═══════════════════════════════════════════════════════ -->
+    <script>
+        // ╔═══════════════════════════════════════════════════════════════╗
+        // ║                                                               ║
+        // ║   🔧 إعدادات الخادم - غيّر هذا الرابط لرابط خادمك الفعلي      ║
+        // ║                                                               ║
+        // ╚═══════════════════════════════════════════════════════════════╝
+        
+        const SERVER_URL = "http://localhost:8000";  // ← ضع رابط خادمك هنا
+        
+        // ════════════════════════════════════════════════════════════════
+        // مثال: إذا كان خادمك على Railway:
+        // const SERVER_URL = "https://your-app.railway.app";
+        //
+        // مثال: إذا كان خادمك على Render:
+        // const SERVER_URL = "https://your-app.onrender.com";
+        //
+        // مثال: إذا كان خادمك على Heroku:
+        // const SERVER_URL = "https://your-app.herokuapp.com";
+        //
+        // مثال: للتطوير المحلي:
+        // const SERVER_URL = "http://localhost:8000";
+        // ════════════════════════════════════════════════════════════════
+
+        // ═══════════ المتغيرات ═══════════
+        let selectedFile = null;
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const statusMessage = document.getElementById('statusMessage');
+        const selectedFileText = document.getElementById('selectedFile');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const videoList = document.getElementById('videoList');
+
+        // ═══════════ فحص الاتصال بالخادم ═══════════
+        async function checkServerConnection() {
+            connectionStatus.className = 'connection-status checking';
+            connectionStatus.innerHTML = '🔄 جاري الاتصال بالخادم...';
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/health`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    connectionStatus.className = 'connection-status connected';
+                    connectionStatus.innerHTML = `✅ متصل بالخادم: ${SERVER_URL}`;
+                    return true;
+                } else {
+                    throw new Error('Server returned error');
+                }
+            } catch (error) {
+                connectionStatus.className = 'connection-status disconnected';
+                connectionStatus.innerHTML = `
+                    ❌ فشل الاتصال بالخادم: ${SERVER_URL}
+                    <br><button class="retry-btn" onclick="initApp()">🔄 إعادة المحاولة</button>
+                `;
+                console.error('Connection error:', error);
+                return false;
+            }
+        }
+
+        // ═══════════ تحميل قائمة الفيديوهات ═══════════
+        async function loadVideos() {
+            videoList.innerHTML = `
+                <div class="no-videos" id="loadingVideos">
+                    <span class="loading"></span>
+                    <p>جاري تحميل الفيديوهات...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`${SERVER_URL}/videos`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (!response.ok) throw new Error('Failed to load videos');
+                
+                const data = await response.json();
+                const videos = data.videos;
+                
+                if (videos.length === 0) {
+                    videoList.innerHTML = `
+                        <div class="no-videos">
+                            <p style="font-size: 50px;">📭</p>
+                            <p>لا توجد فيديوهات مرفوعة بعد</p>
+                        </div>
+                    `;
+                } else {
+                    videoList.innerHTML = videos.map(video => `
+                        <div class="video-item" id="video-${video.id}">
+                            <div class="video-info">
+                                <h3>🎬 ${escapeHtml(video.filename)}</h3>
+                                <span>
+                                    📊 ${(video.file_size / 1048576).toFixed(2)} MB
+                                    ${video.duration ? `| ⏱️ ${video.duration} ثانية` : ''}
+                                    | 📅 ${video.uploaded_at.substring(0, 10)}
+                                </span>
+                            </div>
+                            <div class="video-actions">
+                                <button class="btn-play" onclick="playVideo(${video.id}, '${escapeHtml(video.filename)}')">
+                                    ▶️ تشغيل
+                                </button>
+                                <button class="btn-delete" onclick="deleteVideo(${video.id})">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                videoList.innerHTML = `
+                    <div class="no-videos">
+                        <p style="font-size: 50px;">❌</p>
+                        <p>خطأ في تحميل الفيديوهات</p>
+                        <button class="retry-btn" onclick="loadVideos()">🔄 إعادة المحاولة</button>
+                    </div>
+                `;
+                console.error('Load videos error:', error);
+            }
+        }
+
+        // ═══════════ دالة مساعدة لتجنب XSS ═══════════
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ═══════════ السحب والإفلات ═══════════
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('video/')) {
+                selectFile(files[0]);
+            } else {
+                showStatus('يرجى اختيار ملف فيديو!', 'error');
+            }
+        });
+
+        // ═══════════ اختيار ملف ═══════════
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectFile(e.target.files[0]);
+            }
+        });
+
+        function selectFile(file) {
+            selectedFile = file;
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            selectedFileText.textContent = `✅ تم اختيار: ${file.name} (${sizeMB} MB)`;
+            uploadBtn.style.display = 'inline-block';
+            statusMessage.className = 'status';
+            statusMessage.style.display = 'none';
+        }
+
+        // ═══════════ رفع الفيديو ═══════════
+        async function uploadVideo() {
+            if (!selectedFile) {
+                showStatus('يرجى اختيار ملف أولاً!', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            uploadBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            progressText.textContent = '📤 جاري الرفع إلى الخادم...';
+
+            try {
+                const xhr = new XMLHttpRequest();
+                
+                // تتبع التقدم
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        progressFill.style.width = percent + '%';
+                        progressFill.textContent = percent + '%';
+                        
+                        if (percent < 100) {
+                            progressText.textContent = `📤 جاري الرفع للخادم... ${percent}%`;
+                        } else {
+                            progressText.textContent = '📤 جاري الرفع لتلجرام... (قد يستغرق وقتاً)';
+                        }
+                    }
+                });
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        showStatus('✅ ' + response.message, 'success');
+                        // إعادة تحميل قائمة الفيديوهات
+                        setTimeout(() => loadVideos(), 1500);
+                    } else {
+                        let errorMsg = 'حدث خطأ';
+                        try {
+                            const error = JSON.parse(xhr.responseText);
+                            errorMsg = error.detail || errorMsg;
+                        } catch(e) {}
+                        showStatus('❌ ' + errorMsg, 'error');
+                    }
+                    resetUpload();
+                };
+
+                xhr.onerror = function() {
+                    showStatus('❌ خطأ في الاتصال بالخادم', 'error');
+                    resetUpload();
+                };
+
+                // ═══════════ إرسال الطلب للخادم الخارجي ═══════════
+                xhr.open('POST', `${SERVER_URL}/upload`);
+                xhr.send(formData);
+
+            } catch (error) {
+                showStatus('❌ خطأ: ' + error.message, 'error');
+                resetUpload();
+            }
+        }
+
+        function resetUpload() {
+            uploadBtn.disabled = false;
+            selectedFile = null;
+            fileInput.value = '';
+            selectedFileText.textContent = '';
+            uploadBtn.style.display = 'none';
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 2000);
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status ' + type;
+        }
+
+        // ═══════════ تشغيل الفيديو ═══════════
+        function playVideo(videoId, filename) {
+            const player = document.getElementById('videoPlayer');
+            const video = document.getElementById('videoElement');
+            const title = document.getElementById('playerTitle');
+            
+            title.textContent = '🎬 ' + filename;
+            
+            // ═══════════ استخدام الرابط الكامل للخادم ═══════════
+            video.src = `${SERVER_URL}/download/${videoId}`;
+            
+            player.classList.add('active');
+            video.play().catch(e => {
+                console.log('Autoplay blocked, user needs to click play');
+            });
+        }
+
+        function closePlayer() {
+            const player = document.getElementById('videoPlayer');
+            const video = document.getElementById('videoElement');
+            
+            video.pause();
+            video.src = '';
+            player.classList.remove('active');
+        }
+
+        // إغلاق بالـ Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePlayer();
+        });
+
+        // ═══════════ حذف فيديو ═══════════
+        async function deleteVideo(videoId) {
+            if (!confirm('هل أنت متأكد من حذف هذا الفيديو؟')) return;
+            
+            try {
+                // ═══════════ استخدام الرابط الكامل للخادم ═══════════
+                const response = await fetch(`${SERVER_URL}/video/${videoId}`, {
+                    method: 'DELETE',
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    const videoElement = document.getElementById('video-' + videoId);
+                    if (videoElement) {
+                        videoElement.remove();
+                    }
+                    showStatus('✅ تم حذف الفيديو', 'success');
+                    
+                    // تحقق إذا لم يعد هناك فيديوهات
+                    if (videoList.querySelectorAll('.video-item').length === 0) {
+                        videoList.innerHTML = `
+                            <div class="no-videos">
+                                <p style="font-size: 50px;">📭</p>
+                                <p>لا توجد فيديوهات مرفوعة بعد</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    let errorMsg = 'حدث خطأ';
+                    try {
+                        const error = await response.json();
+                        errorMsg = error.detail || errorMsg;
+                    } catch(e) {}
+                    showStatus('❌ ' + errorMsg, 'error');
+                }
+            } catch (error) {
+                showStatus('❌ خطأ: ' + error.message, 'error');
+                console.error('Delete error:', error);
+            }
+        }
+
+        // ═══════════ تهيئة التطبيق عند التحميل ═══════════
+        async function initApp() {
+            const connected = await checkServerConnection();
+            if (connected) {
+                await loadVideos();
+            }
+        }
+
+        // بدء التطبيق
+        initApp();
+    </script>
+
+</body>
+</html>
